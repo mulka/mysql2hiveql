@@ -1,0 +1,8 @@
+mysql2hiveql is a tool to convert MySQL queries into Hive queries. You need to have node.js installed to use it.
+
+It's nowhere near to being complete, but it worked for the queries that I needed it to work for at the time.
+
+Implementation details: It uses the PEG.js parser generator to generate a node.js module which you can then run on the command line.
+
+Usage:
+node convert_sql.js < mysql_queries.sql > hive_queries.sql
