@@ -40,7 +40,7 @@ module.exports = (function(){
         "statements": parse_statements,
         "statement": parse_statement,
         "insert": parse_insert,
-        "insert_overwrite": parse_insert_overwrite,
+        "insert_into": parse_insert_into,
         "query": parse_query,
         "joins": parse_joins,
         "from_args": parse_from_args,
@@ -67,7 +67,8 @@ module.exports = (function(){
         "identifier": parse_identifier,
         "string": parse_string,
         "number": parse_number,
-        "ws": parse_ws
+        "ws": parse_ws,
+        "comment": parse_comment
       };
       
       if (startRule !== undefined) {
@@ -124,39 +125,24 @@ module.exports = (function(){
       }
       
       function parse_statements() {
-        var result0, result1;
-        var pos0;
-        
-        pos0 = pos;
-        result1 = parse_statement();
-        if (result1 !== null) {
-          result0 = [];
-          while (result1 !== null) {
-            result0.push(result1);
-            result1 = parse_statement();
-          }
-        } else {
-          result0 = null;
-        }
-        if (result0 !== null) {
-          result0 = (function(offset, s) { return s.join('\n')})(pos0, result0);
-        }
-        if (result0 === null) {
-          pos = pos0;
-        }
-        return result0;
-      }
-      
-      function parse_statement() {
-        var result0, result1;
+        var result0, result1, result2;
         var pos0, pos1;
         
         pos0 = pos;
         pos1 = pos;
-        result0 = parse_insert();
+        result0 = parse_comment();
+        result0 = result0 !== null ? result0 : "";
         if (result0 !== null) {
-          result1 = parse_ws();
-          result1 = result1 !== null ? result1 : "";
+          result2 = parse_statement();
+          if (result2 !== null) {
+            result1 = [];
+            while (result2 !== null) {
+              result1.push(result2);
+              result2 = parse_statement();
+            }
+          } else {
+            result1 = null;
+          }
           if (result1 !== null) {
             result0 = [result0, result1];
           } else {
@@ -168,7 +154,43 @@ module.exports = (function(){
           pos = pos1;
         }
         if (result0 !== null) {
-          result0 = (function(offset, insert) { return insert + '\n'})(pos0, result0[0]);
+          result0 = (function(offset, s) { return s.join('\n')})(pos0, result0[1]);
+        }
+        if (result0 === null) {
+          pos = pos0;
+        }
+        return result0;
+      }
+      
+      function parse_statement() {
+        var result0, result1, result2;
+        var pos0, pos1;
+        
+        pos0 = pos;
+        pos1 = pos;
+        result0 = parse_ws();
+        result0 = result0 !== null ? result0 : "";
+        if (result0 !== null) {
+          result1 = parse_insert();
+          if (result1 !== null) {
+            result2 = parse_ws();
+            result2 = result2 !== null ? result2 : "";
+            if (result2 !== null) {
+              result0 = [result0, result1, result2];
+            } else {
+              result0 = null;
+              pos = pos1;
+            }
+          } else {
+            result0 = null;
+            pos = pos1;
+          }
+        } else {
+          result0 = null;
+          pos = pos1;
+        }
+        if (result0 !== null) {
+          result0 = (function(offset, insert) { return insert + '\n'})(pos0, result0[1]);
         }
         if (result0 === null) {
           pos = pos0;
@@ -182,7 +204,7 @@ module.exports = (function(){
         
         pos0 = pos;
         pos1 = pos;
-        result0 = parse_insert_overwrite();
+        result0 = parse_insert_into();
         if (result0 !== null) {
           result1 = parse_identifier();
           if (result1 !== null) {
@@ -216,7 +238,7 @@ module.exports = (function(){
         return result0;
       }
       
-      function parse_insert_overwrite() {
+      function parse_insert_into() {
         var result0;
         var pos0;
         
@@ -421,46 +443,52 @@ module.exports = (function(){
       }
       
       function parse_join() {
-        var result0, result1, result2, result3, result4;
+        var result0, result1, result2, result3, result4, result5;
         var pos0, pos1;
         
         pos0 = pos;
         pos1 = pos;
-        if (input.substr(pos, 6) === "\nJOIN ") {
-          result0 = "\nJOIN ";
-          pos += 6;
-        } else {
-          result0 = null;
-          if (reportFailures === 0) {
-            matchFailed("\"\\nJOIN \"");
-          }
-        }
+        result0 = parse_ws();
         if (result0 !== null) {
-          result1 = parse_from_args();
-          if (result1 !== null) {
-            if (input.substr(pos, 5) === " ON (") {
-              result2 = " ON (";
-              pos += 5;
-            } else {
-              result2 = null;
-              if (reportFailures === 0) {
-                matchFailed("\" ON (\"");
-              }
+          if (input.substr(pos, 5) === "JOIN ") {
+            result1 = "JOIN ";
+            pos += 5;
+          } else {
+            result1 = null;
+            if (reportFailures === 0) {
+              matchFailed("\"JOIN \"");
             }
+          }
+          if (result1 !== null) {
+            result2 = parse_from_args();
             if (result2 !== null) {
-              result3 = parse_where_args();
-              if (result3 !== null) {
-                if (input.charCodeAt(pos) === 41) {
-                  result4 = ")";
-                  pos++;
-                } else {
-                  result4 = null;
-                  if (reportFailures === 0) {
-                    matchFailed("\")\"");
-                  }
+              if (input.substr(pos, 5) === " ON (") {
+                result3 = " ON (";
+                pos += 5;
+              } else {
+                result3 = null;
+                if (reportFailures === 0) {
+                  matchFailed("\" ON (\"");
                 }
+              }
+              if (result3 !== null) {
+                result4 = parse_where_args();
                 if (result4 !== null) {
-                  result0 = [result0, result1, result2, result3, result4];
+                  if (input.charCodeAt(pos) === 41) {
+                    result5 = ")";
+                    pos++;
+                  } else {
+                    result5 = null;
+                    if (reportFailures === 0) {
+                      matchFailed("\")\"");
+                    }
+                  }
+                  if (result5 !== null) {
+                    result0 = [result0, result1, result2, result3, result4, result5];
+                  } else {
+                    result0 = null;
+                    pos = pos1;
+                  }
                 } else {
                   result0 = null;
                   pos = pos1;
@@ -482,7 +510,7 @@ module.exports = (function(){
           pos = pos1;
         }
         if (result0 !== null) {
-          result0 = (function(offset, from_args, where_args) { return '\nJOIN ' + from_args + ' ON (' + where_args + ')';})(pos0, result0[1], result0[3]);
+          result0 = (function(offset, from_args, where_args) { return '\nJOIN ' + from_args + ' ON (' + where_args + ')';})(pos0, result0[2], result0[4]);
         }
         if (result0 === null) {
           pos = pos0;
@@ -491,24 +519,30 @@ module.exports = (function(){
       }
       
       function parse_where() {
-        var result0, result1;
+        var result0, result1, result2;
         var pos0, pos1;
         
         pos0 = pos;
         pos1 = pos;
-        if (input.substr(pos, 7) === "\nWHERE ") {
-          result0 = "\nWHERE ";
-          pos += 7;
-        } else {
-          result0 = null;
-          if (reportFailures === 0) {
-            matchFailed("\"\\nWHERE \"");
-          }
-        }
+        result0 = parse_ws();
         if (result0 !== null) {
-          result1 = parse_where_args();
+          if (input.substr(pos, 6) === "WHERE ") {
+            result1 = "WHERE ";
+            pos += 6;
+          } else {
+            result1 = null;
+            if (reportFailures === 0) {
+              matchFailed("\"WHERE \"");
+            }
+          }
           if (result1 !== null) {
-            result0 = [result0, result1];
+            result2 = parse_where_args();
+            if (result2 !== null) {
+              result0 = [result0, result1, result2];
+            } else {
+              result0 = null;
+              pos = pos1;
+            }
           } else {
             result0 = null;
             pos = pos1;
@@ -518,7 +552,7 @@ module.exports = (function(){
           pos = pos1;
         }
         if (result0 !== null) {
-          result0 = (function(offset, where_args) { return '\nWHERE ' + where_args;})(pos0, result0[1]);
+          result0 = (function(offset, where_args) { return '\nWHERE ' + where_args;})(pos0, result0[2]);
         }
         if (result0 === null) {
           pos = pos0;
@@ -691,24 +725,30 @@ module.exports = (function(){
       }
       
       function parse_group_by() {
-        var result0, result1;
+        var result0, result1, result2;
         var pos0, pos1;
         
         pos0 = pos;
         pos1 = pos;
-        if (input.substr(pos, 10) === "\nGROUP BY ") {
-          result0 = "\nGROUP BY ";
-          pos += 10;
-        } else {
-          result0 = null;
-          if (reportFailures === 0) {
-            matchFailed("\"\\nGROUP BY \"");
-          }
-        }
+        result0 = parse_ws();
         if (result0 !== null) {
-          result1 = parse_fields();
+          if (input.substr(pos, 9) === "GROUP BY ") {
+            result1 = "GROUP BY ";
+            pos += 9;
+          } else {
+            result1 = null;
+            if (reportFailures === 0) {
+              matchFailed("\"GROUP BY \"");
+            }
+          }
           if (result1 !== null) {
-            result0 = [result0, result1];
+            result2 = parse_fields();
+            if (result2 !== null) {
+              result0 = [result0, result1, result2];
+            } else {
+              result0 = null;
+              pos = pos1;
+            }
           } else {
             result0 = null;
             pos = pos1;
@@ -718,7 +758,7 @@ module.exports = (function(){
           pos = pos1;
         }
         if (result0 !== null) {
-          result0 = (function(offset, f2) { return '\nGROUP BY ' + f2 })(pos0, result0[1]);
+          result0 = (function(offset, f2) { return '\nGROUP BY ' + f2 })(pos0, result0[2]);
         }
         if (result0 === null) {
           pos = pos0;
@@ -1686,8 +1726,11 @@ module.exports = (function(){
       }
       
       function parse_ws() {
-        var result0, result1;
+        var result0, result1, result2, result3;
+        var pos0;
         
+        pos0 = pos;
+        result0 = [];
         if (/^[\n ]/.test(input.charAt(pos))) {
           result1 = input.charAt(pos);
           pos++;
@@ -1697,22 +1740,152 @@ module.exports = (function(){
             matchFailed("[\\n ]");
           }
         }
-        if (result1 !== null) {
-          result0 = [];
-          while (result1 !== null) {
-            result0.push(result1);
+        while (result1 !== null) {
+          result0.push(result1);
+          if (/^[\n ]/.test(input.charAt(pos))) {
+            result1 = input.charAt(pos);
+            pos++;
+          } else {
+            result1 = null;
+            if (reportFailures === 0) {
+              matchFailed("[\\n ]");
+            }
+          }
+        }
+        if (result0 !== null) {
+          result1 = parse_comment();
+          if (result1 !== null) {
+            result2 = [];
             if (/^[\n ]/.test(input.charAt(pos))) {
-              result1 = input.charAt(pos);
+              result3 = input.charAt(pos);
               pos++;
             } else {
-              result1 = null;
+              result3 = null;
               if (reportFailures === 0) {
                 matchFailed("[\\n ]");
               }
             }
+            while (result3 !== null) {
+              result2.push(result3);
+              if (/^[\n ]/.test(input.charAt(pos))) {
+                result3 = input.charAt(pos);
+                pos++;
+              } else {
+                result3 = null;
+                if (reportFailures === 0) {
+                  matchFailed("[\\n ]");
+                }
+              }
+            }
+            if (result2 !== null) {
+              result0 = [result0, result1, result2];
+            } else {
+              result0 = null;
+              pos = pos0;
+            }
+          } else {
+            result0 = null;
+            pos = pos0;
           }
         } else {
           result0 = null;
+          pos = pos0;
+        }
+        if (result0 === null) {
+          if (/^[\n ]/.test(input.charAt(pos))) {
+            result1 = input.charAt(pos);
+            pos++;
+          } else {
+            result1 = null;
+            if (reportFailures === 0) {
+              matchFailed("[\\n ]");
+            }
+          }
+          if (result1 !== null) {
+            result0 = [];
+            while (result1 !== null) {
+              result0.push(result1);
+              if (/^[\n ]/.test(input.charAt(pos))) {
+                result1 = input.charAt(pos);
+                pos++;
+              } else {
+                result1 = null;
+                if (reportFailures === 0) {
+                  matchFailed("[\\n ]");
+                }
+              }
+            }
+          } else {
+            result0 = null;
+          }
+        }
+        return result0;
+      }
+      
+      function parse_comment() {
+        var result0, result1, result2;
+        var pos0;
+        
+        pos0 = pos;
+        if (input.substr(pos, 3) === "-- ") {
+          result0 = "-- ";
+          pos += 3;
+        } else {
+          result0 = null;
+          if (reportFailures === 0) {
+            matchFailed("\"-- \"");
+          }
+        }
+        if (result0 !== null) {
+          if (/^[^\n]/.test(input.charAt(pos))) {
+            result2 = input.charAt(pos);
+            pos++;
+          } else {
+            result2 = null;
+            if (reportFailures === 0) {
+              matchFailed("[^\\n]");
+            }
+          }
+          if (result2 !== null) {
+            result1 = [];
+            while (result2 !== null) {
+              result1.push(result2);
+              if (/^[^\n]/.test(input.charAt(pos))) {
+                result2 = input.charAt(pos);
+                pos++;
+              } else {
+                result2 = null;
+                if (reportFailures === 0) {
+                  matchFailed("[^\\n]");
+                }
+              }
+            }
+          } else {
+            result1 = null;
+          }
+          if (result1 !== null) {
+            if (input.charCodeAt(pos) === 10) {
+              result2 = "\n";
+              pos++;
+            } else {
+              result2 = null;
+              if (reportFailures === 0) {
+                matchFailed("\"\\n\"");
+              }
+            }
+            if (result2 !== null) {
+              result0 = [result0, result1, result2];
+            } else {
+              result0 = null;
+              pos = pos0;
+            }
+          } else {
+            result0 = null;
+            pos = pos0;
+          }
+        } else {
+          result0 = null;
+          pos = pos0;
         }
         return result0;
       }

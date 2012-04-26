@@ -2,15 +2,15 @@ start
 = statements
 
 statements
-= s:statement+ { return s.join('\n')}
+= comment? s:statement+ { return s.join('\n')}
 
 statement
-= insert:insert ws? { return insert + '\n'}
+= ws? insert:insert ws? { return insert + '\n'}
 
 insert
-= io:insert_overwrite name:table_name ws q:query { return io + name + '\n' + q }
+= io:insert_into name:table_name ws q:query { return io + name + '\n' + q }
 
-insert_overwrite
+insert_into
 = 'INSERT INTO ' {return 'INSERT OVERWRITE TABLE ';}
 
 query
@@ -26,10 +26,10 @@ alias
 = (' ' table_name:table_name) {return ' ' + table_name;}
 
 join
-= '\nJOIN ' from_args:from_args ' ON (' where_args:where_args ')' { return '\nJOIN ' + from_args + ' ON (' + where_args + ')';}
+= ws 'JOIN ' from_args:from_args ' ON (' where_args:where_args ')' { return '\nJOIN ' + from_args + ' ON (' + where_args + ')';}
 
 where
-= '\nWHERE ' where_args:where_args { return '\nWHERE ' + where_args;}
+= ws 'WHERE ' where_args:where_args { return '\nWHERE ' + where_args;}
 
 where_args
 = cond1:where_cond cond2:where_cond2? { return cond1 + cond2;}
@@ -46,7 +46,7 @@ where_op
 / 'IS'
 
 group_by
-= '\nGROUP BY ' f2:fields { return '\nGROUP BY ' + f2 }
+= ws 'GROUP BY ' f2:fields { return '\nGROUP BY ' + f2 }
 
 fields
 = '*'
@@ -116,4 +116,8 @@ number
 = digits:[0-9]+ { return digits.join(''); }
 
 ws
-= [\n ]+
+= [\n ]* comment [\n ]*
+/ [\n ]+
+
+comment
+= '-- ' [^\n]+ '\n'
