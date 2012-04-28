@@ -26,24 +26,53 @@ alias
 = (' ' table_name:table_name) {return ' ' + table_name;}
 
 join
-= ws 'JOIN ' from_args:from_args ' ON (' where_args:where_args ')' { return '\nJOIN ' + from_args + ' ON (' + where_args + ')';}
+= ws jt:join_type? 'JOIN ' from_args:from_args ' ON (' join_args:join_args ')' { return '\n' + jt + 'JOIN ' + from_args + ' ON (' + join_args + ')';}
+
+join_type
+= 'LEFT OUTER '
+/ 'RIGHT OUTER '
+
+join_args
+= cond1:join_cond cond2:join_cond2* { return cond1 + cond2.join('');}
+
+join_cond
+= e1:expr ' ' test:join_expr_test { return e1 + ' ' + test; }
+/ '(' a:join_args ')' { return '(' + a + ')'; }
+
+join_cond2
+= ' ' op:bool_op ' ' join_cond:join_cond { return ' ' + op + ' ' + join_cond;}
+
+join_expr_test
+= '= ' e:expr { return '= ' + e; }
+/ 'IS NOT NULL'
+/ 'IS NULL'
 
 where
 = ws 'WHERE ' where_args:where_args { return '\nWHERE ' + where_args;}
 
 where_args
-= cond1:where_cond cond2:where_cond2? { return cond1 + cond2;}
+= cond1:where_cond cond2:where_cond2* { return cond1 + cond2.join('');}
 
 where_cond
-= field:field ' ' where_op:where_op ' ' expr:expr { return field + ' ' + where_op + ' ' + expr; }
+= e1:expr ' ' test:expr_test { return e1 + ' ' + test; }
+/ '(' a:where_args ')' { return '(' + a + ')'; }
 
 where_cond2
-= ' AND ' where_cond:where_cond { return ' AND ' + where_cond;}
+= ' ' op:bool_op ' ' where_cond:where_cond { return ' ' + op + ' ' + where_cond;}
 
-where_op
+bool_op
+= 'AND'
+/ 'OR'
+
+expr_test
+= op:test_op ' ' e:expr { return op + ' ' + e; }
+/ 'IS NOT NULL'
+/ 'IS NULL'
+
+test_op
 = '='
-/ 'IS NOT'
-/ 'IS'
+/ '<'
+/ '>'
 
 group_by
 = ws 'GROUP BY ' f2:fields { return '\nGROUP BY ' + f2 }
@@ -56,23 +85,27 @@ field_piece
 = ', ' f:expr { return ', ' + f; }
 
 expr
-= f:field ' ' op:op ' ' expr:expr { return f + ' ' + op + ' ' + expr;}
+= scalar
+/ f:field ' ' op:op ' ' expr:expr { return f + ' ' + op + ' ' + expr;}
 / f:func ' ' op:op ' ' expr:expr { return f + ' ' + op + ' ' + expr;}
 / field
 / func
-/ string
+
+scalar
+= string
 / number
 / 'NULL'
 
 op
-= '*'
+= '+'
+/ '-'
+/ '*'
 / '/'
-/ 'IS'
-/ 'IS NOT'
 
 func
 = n:'FROM_UNIXTIME' '(' a:unixtime_args ')' {return n + '(' + a + ')';}
 / n:'COUNT' '(' a:count_args ')' {return n + '(' + a + ')';}
+/ n:'IF' '(' a:where_args ', ' s1:scalar ', ' s2:scalar ')' {return n + '(' + a + ', ' + s1 + ', ' + s2 + ')';}
 / name:[A-Z_]+ '(' a:args ')' {return name.join('') + '(' + a + ')';}
 
 unixtime_args
@@ -107,7 +140,7 @@ table_name
 = identifier
 
 identifier
-= chars:[a-z_]+ { return chars.join(''); }
+= chars:[a-z0-9_]+ { return chars.join(''); }
 
 string
 = "'" chars:[a-zA-Z-]+ "'" { return "'" + chars.join('') + "'"; }
