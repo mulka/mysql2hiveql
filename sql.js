@@ -42,6 +42,8 @@ module.exports = (function(){
         "insert": parse_insert,
         "insert_into": parse_insert_into,
         "query": parse_query,
+        "naked_query": parse_naked_query,
+        "union_all": parse_union_all,
         "joins": parse_joins,
         "from_args": parse_from_args,
         "alias": parse_alias,
@@ -270,6 +272,42 @@ module.exports = (function(){
       }
       
       function parse_query() {
+        var result0, result1;
+        var pos0, pos1;
+        
+        pos0 = pos;
+        pos1 = pos;
+        result0 = parse_naked_query();
+        if (result0 !== null) {
+          if (input.charCodeAt(pos) === 59) {
+            result1 = ";";
+            pos++;
+          } else {
+            result1 = null;
+            if (reportFailures === 0) {
+              matchFailed("\";\"");
+            }
+          }
+          if (result1 !== null) {
+            result0 = [result0, result1];
+          } else {
+            result0 = null;
+            pos = pos1;
+          }
+        } else {
+          result0 = null;
+          pos = pos1;
+        }
+        if (result0 !== null) {
+          result0 = (function(offset, naked_query) {return naked_query + ';';})(pos0, result0[0]);
+        }
+        if (result0 === null) {
+          pos = pos0;
+        }
+        return result0;
+      }
+      
+      function parse_naked_query() {
         var result0, result1, result2, result3, result4, result5, result6, result7, result8;
         var pos0, pos1;
         
@@ -309,15 +347,8 @@ module.exports = (function(){
                       result7 = parse_group_by();
                       result7 = result7 !== null ? result7 : "";
                       if (result7 !== null) {
-                        if (input.charCodeAt(pos) === 59) {
-                          result8 = ";";
-                          pos++;
-                        } else {
-                          result8 = null;
-                          if (reportFailures === 0) {
-                            matchFailed("\";\"");
-                          }
-                        }
+                        result8 = parse_union_all();
+                        result8 = result8 !== null ? result8 : "";
                         if (result8 !== null) {
                           result0 = [result0, result1, result2, result3, result4, result5, result6, result7, result8];
                         } else {
@@ -357,7 +388,55 @@ module.exports = (function(){
           pos = pos1;
         }
         if (result0 !== null) {
-          result0 = (function(offset, f1, from_args, joins, where, group_by) { return 'SELECT ' + f1 + '\nFROM ' + from_args + joins + where + group_by + ';'; })(pos0, result0[1], result0[4], result0[5], result0[6], result0[7]);
+          result0 = (function(offset, f1, from_args, joins, where, group_by, union_all) { return 'SELECT ' + f1 + '\nFROM ' + from_args + joins + where + group_by + union_all; })(pos0, result0[1], result0[4], result0[5], result0[6], result0[7], result0[8]);
+        }
+        if (result0 === null) {
+          pos = pos0;
+        }
+        return result0;
+      }
+      
+      function parse_union_all() {
+        var result0, result1, result2, result3;
+        var pos0, pos1;
+        
+        pos0 = pos;
+        pos1 = pos;
+        result0 = parse_ws();
+        if (result0 !== null) {
+          if (input.substr(pos, 9) === "UNION ALL") {
+            result1 = "UNION ALL";
+            pos += 9;
+          } else {
+            result1 = null;
+            if (reportFailures === 0) {
+              matchFailed("\"UNION ALL\"");
+            }
+          }
+          if (result1 !== null) {
+            result2 = parse_ws();
+            if (result2 !== null) {
+              result3 = parse_naked_query();
+              if (result3 !== null) {
+                result0 = [result0, result1, result2, result3];
+              } else {
+                result0 = null;
+                pos = pos1;
+              }
+            } else {
+              result0 = null;
+              pos = pos1;
+            }
+          } else {
+            result0 = null;
+            pos = pos1;
+          }
+        } else {
+          result0 = null;
+          pos = pos1;
+        }
+        if (result0 !== null) {
+          result0 = (function(offset, naked_query) {return '\n' + 'UNION ALL' + '\n' + naked_query;})(pos0, result0[3]);
         }
         if (result0 === null) {
           pos = pos0;
@@ -386,7 +465,7 @@ module.exports = (function(){
       }
       
       function parse_from_args() {
-        var result0, result1;
+        var result0, result1, result2, result3, result4, result5;
         var pos0, pos1;
         
         pos0 = pos;
@@ -410,6 +489,71 @@ module.exports = (function(){
         }
         if (result0 === null) {
           pos = pos0;
+        }
+        if (result0 === null) {
+          pos0 = pos;
+          pos1 = pos;
+          if (input.charCodeAt(pos) === 40) {
+            result0 = "(";
+            pos++;
+          } else {
+            result0 = null;
+            if (reportFailures === 0) {
+              matchFailed("\"(\"");
+            }
+          }
+          if (result0 !== null) {
+            result1 = parse_ws();
+            result1 = result1 !== null ? result1 : "";
+            if (result1 !== null) {
+              result2 = parse_naked_query();
+              if (result2 !== null) {
+                result3 = parse_ws();
+                result3 = result3 !== null ? result3 : "";
+                if (result3 !== null) {
+                  if (input.charCodeAt(pos) === 41) {
+                    result4 = ")";
+                    pos++;
+                  } else {
+                    result4 = null;
+                    if (reportFailures === 0) {
+                      matchFailed("\")\"");
+                    }
+                  }
+                  if (result4 !== null) {
+                    result5 = parse_alias();
+                    if (result5 !== null) {
+                      result0 = [result0, result1, result2, result3, result4, result5];
+                    } else {
+                      result0 = null;
+                      pos = pos1;
+                    }
+                  } else {
+                    result0 = null;
+                    pos = pos1;
+                  }
+                } else {
+                  result0 = null;
+                  pos = pos1;
+                }
+              } else {
+                result0 = null;
+                pos = pos1;
+              }
+            } else {
+              result0 = null;
+              pos = pos1;
+            }
+          } else {
+            result0 = null;
+            pos = pos1;
+          }
+          if (result0 !== null) {
+            result0 = (function(offset, naked_query, alias) {return '(\n' + naked_query + '\n) ' + alias;})(pos0, result0[2], result0[5]);
+          }
+          if (result0 === null) {
+            pos = pos0;
+          }
         }
         return result0;
       }

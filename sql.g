@@ -14,13 +14,20 @@ insert_into
 = 'INSERT INTO ' {return 'INSERT OVERWRITE TABLE ';}
 
 query
-= 'SELECT ' f1:fields ws 'FROM ' from_args:from_args joins:joins where:where? group_by:group_by? ';' { return 'SELECT ' + f1 + '\nFROM ' + from_args + joins + where + group_by + ';'; }
+= naked_query:naked_query ';' {return naked_query + ';';}
+
+naked_query
+= 'SELECT ' f1:fields ws 'FROM ' from_args:from_args joins:joins where:where? group_by:group_by? union_all:union_all? { return 'SELECT ' + f1 + '\nFROM ' + from_args + joins + where + group_by + union_all; }
+
+union_all
+= ws 'UNION ALL' ws naked_query:naked_query {return '\n' + 'UNION ALL' + '\n' + naked_query;}
 
 joins
 = joins:join* { return joins.join('')}
 
 from_args
 = name:table_name alias:alias? { var rv = name; if(alias){ rv += alias; } return rv;}
+/ '(' ws? naked_query:naked_query ws? ')' alias:alias {return '(\n' + naked_query + '\n) ' + alias;}
 
 alias
 = (' ' table_name:table_name) {return ' ' + table_name;}
